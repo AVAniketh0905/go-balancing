@@ -8,7 +8,7 @@ import (
 )
 
 type Server interface {
-	Details() string
+	Info() string
 	Run() error
 }
 
@@ -18,7 +18,7 @@ type TCPServer struct {
 	HandlerFunc func(ctx context.Context, conn net.Conn)
 }
 
-func (s TCPServer) Details() string {
+func (s TCPServer) Info() string {
 	return "tcp:" + s.Config.Addr()
 }
 
@@ -64,7 +64,7 @@ type UDPServer struct {
 	HandlerFunc func(ctx context.Context, conn net.PacketConn)
 }
 
-func (s UDPServer) Details() string {
+func (s UDPServer) Info() string {
 	return "udp" + s.Config.Addr()
 }
 

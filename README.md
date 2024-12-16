@@ -15,4 +15,13 @@
 
 ### Service
 
+- server
+- Type
+
 ### Instance
+
+- service
+- State
+- Id
+
+shuld be able to pass state chan to service
