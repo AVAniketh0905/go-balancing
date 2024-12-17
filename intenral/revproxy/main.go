@@ -3,29 +3,43 @@ package revproxy
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"sync"
+
+	"github.com/AVAniketh0905/go-balancing/intenral/loadbalance"
 )
 
 const REVPROXY_ADDR = "localhost:80"
 
 type ReverseProxy struct {
-	dst        net.Conn
-	remoteAddr string
+	lb      loadbalance.Algorithm
+	servers []string
 }
 
 func (rp ReverseProxy) HandlerFunc(ctx context.Context, src net.Conn) {
-	log.Printf("Proxy: connection established between %s and %s\n", src.RemoteAddr(), rp.dst.RemoteAddr())
-	defer func() {
-		// log.Printf("Proxy: closing connection between %s and %s\n", src.RemoteAddr(), rp.dst.RemoteAddr())
+	server, err := rp.lb.SelectBackend(rp.servers)
+	if err != nil {
+		log.Printf("Error selecting backend server: %v", err)
 		src.Close()
-	}()
+		return
+	}
+
+	dst, err := net.Dial("tcp", server)
+	if err != nil {
+		log.Printf("Error connecting to backend server %s: %v", server, err)
+		src.Close()
+		return
+	}
+	defer dst.Close()
+
+	log.Printf("Proxy: connection established between %s and %s\n", src.RemoteAddr(), dst.RemoteAddr())
 
 	once := &sync.Once{}
-	go proxy(once, src, rp.dst)
-	proxy(once, rp.dst, src)
+	go proxy(once, src, dst)
+	proxy(once, dst, src)
 }
 
 func proxy(once *sync.Once, dst io.WriteCloser, src io.ReadCloser) {
@@ -54,14 +68,13 @@ func proxy(once *sync.Once, dst io.WriteCloser, src io.ReadCloser) {
 	}
 }
 
-func New(network string, remoteAddr string) (*ReverseProxy, error) {
-	dst, err := net.Dial(network, remoteAddr)
-	if err != nil {
-		return nil, err
+func New(lb loadbalance.Algorithm, servers []string) (*ReverseProxy, error) {
+	if len(servers) == 0 {
+		return nil, fmt.Errorf("no backend servers provided")
 	}
 
 	return &ReverseProxy{
-		dst:        dst,
-		remoteAddr: remoteAddr,
+		lb:      lb,
+		servers: servers,
 	}, nil
 }
