@@ -38,7 +38,7 @@ func (s TCPServer) Run() error {
 			log.Println("shutting down TCP server...")
 			return nil
 		default:
-			l.(*net.TCPListener).SetDeadline(time.Now().Add(1 * time.Second)) // waits for 1 sec
+			l.(*net.TCPListener).SetDeadline(time.Now().Add(10 * time.Second)) // waits for 1 sec
 			conn, err := l.Accept()
 			if err != nil {
 				if ne, ok := err.(net.Error); ok && ne.Timeout() {
