@@ -18,8 +18,8 @@ func TestRevProxy(t *testing.T) {
 
 	config := server.NewConfig(3000)
 	tcpServer := server.TCPServer{
-		Config:  config,
-		Context: ctx,
+		Config: config,
+		Ctx:    ctx,
 		HandlerFunc: func(ctx context.Context, conn net.Conn) {
 			buf := make([]byte, 1024)
 			n, err := conn.Read(buf)
@@ -49,7 +49,7 @@ func TestRevProxy(t *testing.T) {
 	rpConfig := server.NewConfig(3470)
 	rpServer := server.TCPServer{
 		Config:      rpConfig,
-		Context:     ctx,
+		Ctx:         ctx,
 		HandlerFunc: rp.HandlerFunc,
 	}
 

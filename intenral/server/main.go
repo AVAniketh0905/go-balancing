@@ -14,7 +14,7 @@ type Server interface {
 
 type TCPServer struct {
 	Config      Config
-	Context     context.Context
+	Ctx         context.Context
 	HandlerFunc func(ctx context.Context, conn net.Conn)
 }
 
@@ -34,7 +34,7 @@ func (s TCPServer) Run() error {
 
 	for {
 		select {
-		case <-s.Context.Done():
+		case <-s.Ctx.Done():
 			log.Println("shutting down TCP server...")
 			return nil
 		default:
@@ -52,7 +52,7 @@ func (s TCPServer) Run() error {
 			log.Println("conn started at, ", conn.LocalAddr())
 			go func() {
 				defer conn.Close()
-				s.HandlerFunc(s.Context, conn)
+				s.HandlerFunc(s.Ctx, conn)
 			}()
 		}
 	}
@@ -60,7 +60,7 @@ func (s TCPServer) Run() error {
 
 type UDPServer struct {
 	Config      Config
-	Context     context.Context
+	Ctx         context.Context
 	HandlerFunc func(ctx context.Context, conn net.PacketConn)
 }
 
@@ -72,7 +72,7 @@ func (s UDPServer) Run() error {
 	addr := s.Config.Addr()
 
 	select {
-	case <-s.Context.Done():
+	case <-s.Ctx.Done():
 		log.Println("shutting down TCP server...")
 		return nil
 	default:
@@ -84,7 +84,7 @@ func (s UDPServer) Run() error {
 		log.Printf("listener started at, %v\n", addr)
 		go func() {
 			defer conn.Close()
-			s.HandlerFunc(s.Context, conn)
+			s.HandlerFunc(s.Ctx, conn)
 		}()
 	}
 

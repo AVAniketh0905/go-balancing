@@ -28,15 +28,15 @@ func TestMultipleServers(t *testing.T) {
 
 	servers := []server.Server{
 		server.TCPServer{
-			Config:  server.NewConfig(3000),
-			Context: ctx,
+			Config: server.NewConfig(3000),
+			Ctx:    ctx,
 			HandlerFunc: func(ctx context.Context, conn net.Conn) {
 				defer conn.Close()
 			},
 		},
 		server.TCPServer{
-			Config:  server.NewConfig(3001),
-			Context: ctx,
+			Config: server.NewConfig(3001),
+			Ctx:    ctx,
 			HandlerFunc: func(ctx context.Context, conn net.Conn) {
 				defer conn.Close()
 			},
