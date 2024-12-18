@@ -1,30 +1,51 @@
-# Go Networking
+# Go Load Balancing
+
+## LB Algos
+
+- [x] Round Robin
+- [x] Weighted Round Robin
+- [x] Random
+- [ ] Least Connections
 
 ## Types
 
 ### Server
 
-weak numConns, currently only wrk server side
-thus server side db(in memory)
+weak numConns, currently only wrks for server side, thus server side db(in memory)
 
-- address
-- SetupFunc
-- HandlerFunc
+```go
+// helper global var
+MaxConnsDB(in mem sync.Map)
+```
 
-#### Methods
-
-- Setup()
-- Run()
+- numConns (atomic)
+- config
+- context
+- handlerFunc
 
 ### Service
 
 - server
-- Type
+- type
 
 ### Instance
 
+- id
 - service
-- State
-- Id
+- state
+- stateChan
+- mutex
 
 shuld be able to pass state chan to service
+
+### Reverse Proxy
+
+to be used before passing to a server()
+
+- lb (loadbalancer)
+- servers(slice of addresses)
+
+### Load Balancer
+
+- servers
+- weights (optional)

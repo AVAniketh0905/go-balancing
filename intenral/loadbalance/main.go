@@ -4,9 +4,11 @@ import (
 	"cmp"
 	"fmt"
 	"math/rand"
+	"reflect"
 	"slices"
 	"sync"
 
+	"github.com/AVAniketh0905/go-balancing/intenral/server"
 	"github.com/AVAniketh0905/go-balancing/intenral/utils"
 )
 
@@ -113,6 +115,62 @@ type LeastConnections struct {
 	servers []string
 }
 
+func (lc *LeastConnections) Init(servers []string) {
+	lc.servers = servers
+}
+
 func (lc *LeastConnections) SelectBackend() (string, error) {
-	return "", nil
+	conns := []int32{}
+	for _, s := range lc.servers {
+		conn, ok := server.MaxConnsDB.Load(s)
+		// log.Println("from db, ", s, conn)
+		if !ok {
+			return "", fmt.Errorf("couldnt find %v in global DB", s)
+		}
+
+		c, ok := conn.(int32)
+		if !ok {
+			return "", fmt.Errorf("improper conn int type, expected int32, got %v", reflect.TypeOf(conn))
+		}
+
+		conns = append(conns, c)
+	}
+
+	type A struct {
+		S string
+		C int32
+	}
+
+	combined := []A{}
+	for i, s := range lc.servers {
+		a := A{S: s, C: conns[i]}
+		combined = append(combined, a)
+	}
+
+	idx := randomMinIdx(conns)
+
+	return combined[idx].S, nil
+}
+
+func randomMinIdx(slice []int32) int {
+	if len(slice) == 0 {
+		return 0
+	}
+
+	min := slice[0]
+	for _, val := range slice[1:] {
+		if val < min {
+			min = val
+		}
+	}
+
+	var minIndices []int
+	for i, val := range slice {
+		if val == min {
+			minIndices = append(minIndices, i)
+		}
+	}
+
+	randomIndex := minIndices[rand.Intn(len(minIndices))]
+	return randomIndex
 }

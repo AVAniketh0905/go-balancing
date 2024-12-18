@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -17,7 +18,12 @@ var MaxConnsDB *MaxConnsMap = &MaxConnsMap{}
 
 func (m *MaxConnsMap) StoreMax(addr string, currentConns int32) {
 	value, _ := m.LoadOrStore(addr, currentConns)
-	if value.(int32) < currentConns {
+	valInt32, ok := value.(int32)
+	if !ok {
+		log.Println(value, reflect.TypeOf(value))
+	}
+
+	if valInt32 < currentConns {
 		m.Store(addr, currentConns)
 	}
 }
@@ -59,9 +65,9 @@ func (s *TCPServer) Run() error {
 	}
 	defer func() {
 		l.Close()
-		log.Println("server closed")
+		log.Println("server closed", l.Addr())
 	}()
-	log.Printf("server started at, %v\n...", addr)
+	log.Printf("server started at, %v...\n", addr)
 
 	for {
 		select {
@@ -69,7 +75,7 @@ func (s *TCPServer) Run() error {
 			log.Println("shutting down TCP server...")
 			return nil
 		default:
-			l.(*net.TCPListener).SetDeadline(time.Now().Add(10 * time.Second)) // waits for 1 sec
+			l.(*net.TCPListener).SetDeadline(time.Now().Add(10 * time.Second)) // waits for 10 sec
 			conn, err := l.Accept()
 			if err != nil {
 				if ne, ok := err.(net.Error); ok && ne.Timeout() {
@@ -80,25 +86,17 @@ func (s *TCPServer) Run() error {
 				return err
 			}
 
-			atomic.AddInt32(&s.numConns, 1)
-			currentConns := s.NumConns()
-			log.Println("server: conn started at, ", conn.LocalAddr(), ", numConns: ", currentConns)
+			currentConns := atomic.AddInt32(&s.numConns, 1)
+			// log.Println("server: conn started at, ", conn.LocalAddr(), "numConns: ", currentConns)
 			MaxConnsDB.StoreMax(s.Config.Addr(), currentConns)
 
-			// go func(conns int32) {
-			// 	// simulate some db call
-			// 	log.Println("db call started...")
-			// 	time.Sleep(5 * time.Second)
-			// 	log.Println("db call ended, val stored", conns)
-			// }(s.NumConns())
-
-			go func() {
+			go func(conn net.Conn, s *TCPServer) {
 				defer func() {
 					conn.Close()
 					atomic.AddInt32(&s.numConns, -1)
 				}()
 				s.HandlerFunc(s.Ctx, conn)
-			}()
+			}(conn, s)
 		}
 	}
 }
