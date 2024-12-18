@@ -5,7 +5,7 @@
 - [x] Round Robin
 - [x] Weighted Round Robin
 - [x] Random
-- [ ] Least Connections
+- [x] Least Connections
 
 ## Types
 
