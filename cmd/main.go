@@ -18,7 +18,7 @@ func init() {
 
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	s := server.TCPServer{
+	s := &server.TCPServer{
 		Config: server.NewConfig(3000),
 		Ctx:    ctx,
 		HandlerFunc: func(ctx context.Context, conn net.Conn) {

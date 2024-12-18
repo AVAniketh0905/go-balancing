@@ -18,11 +18,17 @@ type TCPServer struct {
 	HandlerFunc func(ctx context.Context, conn net.Conn)
 }
 
-func (s TCPServer) Info() string {
+func (s *TCPServer) Init(port int, ctx context.Context, handler func(ctx context.Context, conn net.Conn)) {
+	s.Config = Config{port: port}
+	s.Ctx = ctx
+	s.HandlerFunc = handler
+}
+
+func (s *TCPServer) Info() string {
 	return "tcp:" + s.Config.Addr()
 }
 
-func (s TCPServer) Run() error {
+func (s *TCPServer) Run() error {
 	addr := s.Config.Addr()
 
 	l, err := net.Listen("tcp", addr)
@@ -64,11 +70,17 @@ type UDPServer struct {
 	HandlerFunc func(ctx context.Context, conn net.PacketConn)
 }
 
+func (s *UDPServer) Init(port int, ctx context.Context, handler func(ctx context.Context, conn net.PacketConn)) {
+	s.Config = Config{port: port}
+	s.Ctx = ctx
+	s.HandlerFunc = handler
+}
+
 func (s UDPServer) Info() string {
 	return "udp" + s.Config.Addr()
 }
 
-func (s UDPServer) Run() error {
+func (s *UDPServer) Run() error {
 	addr := s.Config.Addr()
 
 	select {
