@@ -4,15 +4,19 @@ import (
 	"context"
 	"log"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
 type Server interface {
+	NumConns() int32
 	Info() string
 	Run() error
 }
 
 type TCPServer struct {
+	numConns int32
+
 	Config      Config
 	Ctx         context.Context
 	HandlerFunc func(ctx context.Context, conn net.Conn)
@@ -22,6 +26,10 @@ func (s *TCPServer) Init(port int, ctx context.Context, handler func(ctx context
 	s.Config = Config{port: port}
 	s.Ctx = ctx
 	s.HandlerFunc = handler
+}
+
+func (s *TCPServer) NumConns() int32 {
+	return atomic.LoadInt32(&s.numConns)
 }
 
 func (s *TCPServer) Info() string {
@@ -35,8 +43,11 @@ func (s *TCPServer) Run() error {
 	if err != nil {
 		log.Fatal("l: ", err)
 	}
-	defer l.Close()
-	log.Printf("listener started at, %v\n", addr)
+	defer func() {
+		l.Close()
+		log.Println("server closed")
+	}()
+	log.Printf("server started at, %v\n...", addr)
 
 	for {
 		select {
@@ -55,9 +66,20 @@ func (s *TCPServer) Run() error {
 				return err
 			}
 
-			log.Println("conn started at, ", conn.LocalAddr())
+			atomic.AddInt32(&s.numConns, 1)
+			log.Println("server: conn started at, ", conn.LocalAddr(), ", numConns: ", s.NumConns())
+			// go func(conns int32) {
+			// 	// simulate some db call
+			// 	log.Println("db call started...")
+			// 	time.Sleep(5 * time.Second)
+			// 	log.Println("db call ended, val stored", conns)
+			// }(s.NumConns())
+
 			go func() {
-				defer conn.Close()
+				defer func() {
+					conn.Close()
+					atomic.AddInt32(&s.numConns, -1)
+				}()
 				s.HandlerFunc(s.Ctx, conn)
 			}()
 		}
@@ -76,7 +98,12 @@ func (s *UDPServer) Init(port int, ctx context.Context, handler func(ctx context
 	s.HandlerFunc = handler
 }
 
-func (s UDPServer) Info() string {
+func (s *UDPServer) NumConns() int32 {
+	return 0
+
+}
+
+func (s *UDPServer) Info() string {
 	return "udp" + s.Config.Addr()
 }
 
