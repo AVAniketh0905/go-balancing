@@ -4,9 +4,23 @@ import (
 	"context"
 	"log"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 )
+
+type MaxConnsMap struct {
+	sync.Map
+}
+
+var MaxConnsDB *MaxConnsMap = &MaxConnsMap{}
+
+func (m *MaxConnsMap) StoreMax(addr string, currentConns int32) {
+	value, _ := m.LoadOrStore(addr, currentConns)
+	if value.(int32) < currentConns {
+		m.Store(addr, currentConns)
+	}
+}
 
 type Server interface {
 	NumConns() int32
@@ -67,7 +81,10 @@ func (s *TCPServer) Run() error {
 			}
 
 			atomic.AddInt32(&s.numConns, 1)
-			log.Println("server: conn started at, ", conn.LocalAddr(), ", numConns: ", s.NumConns())
+			currentConns := s.NumConns()
+			log.Println("server: conn started at, ", conn.LocalAddr(), ", numConns: ", currentConns)
+			MaxConnsDB.StoreMax(s.Config.Addr(), currentConns)
+
 			// go func(conns int32) {
 			// 	// simulate some db call
 			// 	log.Println("db call started...")

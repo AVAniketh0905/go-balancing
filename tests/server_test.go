@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -114,4 +115,63 @@ func TestNumConns(t *testing.T) {
 	if srv.NumConns() != 0 {
 		t.Errorf("expected numConns to be 0, got %d", srv.NumConns())
 	}
+}
+
+func TestTCPServerWithMaxConns(t *testing.T) {
+	// Server setup
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	srv := &server.TCPServer{}
+	srv.Init(8080, ctx, func(ctx context.Context, conn net.Conn) {
+		defer conn.Close()
+
+		time.Sleep(500 * time.Millisecond)
+	})
+
+	// Start the server
+	go func() {
+		if err := srv.Run(); err != nil {
+			assert.NoError(t, err)
+		}
+	}()
+
+	// Allow server to start
+	time.Sleep(1 * time.Second)
+
+	// Simulate multiple clients
+	numClients := 5
+	var activeClients int32
+	for i := 0; i < numClients; i++ {
+		go func() {
+			atomic.AddInt32(&activeClients, 1)
+			conn, err := net.Dial("tcp", srv.Config.Addr())
+			assert.NoError(t, err)
+			defer conn.Close()
+
+			// Keep the connection alive for a short time
+			time.Sleep(2 * time.Second)
+			atomic.AddInt32(&activeClients, -1)
+		}()
+	}
+
+	// Wait for clients to finish
+	time.Sleep(3 * time.Second)
+
+	// Shutdown the server
+	cancel()
+	time.Sleep(1 * time.Second) // Allow time for cleanup
+
+	// Check max connections in the map
+	value, ok := server.MaxConnsDB.Load(srv.Config.Addr())
+	if !ok {
+		t.Fatalf("expected maxConnsMap to have entry for server %s", srv.Config.Addr())
+	}
+
+	maxConns := value.(int32)
+	if maxConns != int32(numClients) {
+		t.Fatalf("expected max connections to be %d, got %d", numClients, maxConns)
+	}
+
+	t.Logf("Max connections for server %s: %d", srv.Config.Addr(), maxConns)
 }
