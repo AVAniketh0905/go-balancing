@@ -4,6 +4,9 @@
 
 ### Server
 
+weak numConns, currently only wrk server side
+thus server side db(in memory)
+
 - address
 - SetupFunc
 - HandlerFunc

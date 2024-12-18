@@ -45,7 +45,11 @@ func TestRevProxy(t *testing.T) {
 	// Wait for server to start
 	time.Sleep(1 * time.Second)
 
-	rp, err := revproxy.New(&loadbalance.Random{}, []string{tcpServer.Config.Addr()})
+	servers := []string{tcpServer.Config.Addr()}
+
+	randomLB := &loadbalance.Random{}
+	randomLB.Init(servers)
+	rp, err := revproxy.New(randomLB, servers)
 	assert.NoError(t, err)
 
 	rpConfig := server.NewConfig(3470)
@@ -158,6 +162,7 @@ func TestLoadBalancing(t *testing.T) {
 
 	rr := &loadbalance.RoundRobin{}
 	servers := []string{tcpServer1.Config.Addr(), tcpServer2.Config.Addr(), tcpServer3.Config.Addr()}
+	rr.Init(servers)
 	rp, err := revproxy.New(rr, servers)
 	assert.NoError(t, err)
 

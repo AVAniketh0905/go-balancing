@@ -11,40 +11,53 @@ import (
 )
 
 type Algorithm interface {
-	SelectBackend(servers []string) (string, error)
+	SelectBackend() (string, error)
 }
 
 type RoundRobin struct {
 	mu      sync.Mutex
 	current int
+
+	servers []string
 }
 
-func (rr *RoundRobin) SelectBackend(servers []string) (string, error) {
+func (rr *RoundRobin) Init(servers []string) {
+	rr.servers = servers
+}
+
+func (rr *RoundRobin) SelectBackend() (string, error) {
 	rr.mu.Lock()
 	defer rr.mu.Unlock()
 
-	if len(servers) == 0 {
-		return "", fmt.Errorf("no backend servers available")
+	if len(rr.servers) == 0 {
+		return "", fmt.Errorf("no backend rr.servers available")
 	}
 
 	// Select the next server in a circular fashion
-	server := servers[rr.current]
-	rr.current = (rr.current + 1) % len(servers)
+	server := rr.servers[rr.current]
+	rr.current = (rr.current + 1) % len(rr.servers)
 
 	return server, nil
 }
 
 type WeightedRoundRobin struct {
 	mu sync.Mutex
+	q  utils.CyclicSlice[string]
 
-	q utils.CyclicSlice[string]
+	servers []string
+	weights []int
 }
 
-func (wrr *WeightedRoundRobin) SelectBackend(servers []string, weights []int) (string, error) {
+func (wrr *WeightedRoundRobin) Init(servers []string, weights []int) {
+	wrr.servers = servers
+	wrr.weights = weights
+}
+
+func (wrr *WeightedRoundRobin) SelectBackend() (string, error) {
 	wrr.mu.Lock()
 	defer wrr.mu.Unlock()
 
-	if len(servers) == 0 {
+	if len(wrr.servers) == 0 {
 		return "", fmt.Errorf("no backend servers available")
 	}
 
@@ -55,8 +68,8 @@ func (wrr *WeightedRoundRobin) SelectBackend(servers []string, weights []int) (s
 		}
 		combined := []A{}
 
-		for i, s := range servers {
-			a := A{S: s, W: weights[i]}
+		for i, s := range wrr.servers {
+			a := A{S: s, W: wrr.weights[i]}
 			combined = append(combined, a)
 		}
 
@@ -64,7 +77,7 @@ func (wrr *WeightedRoundRobin) SelectBackend(servers []string, weights []int) (s
 			return cmp.Compare(b.W, a.W) // ascending order
 		})
 
-		servers = []string{}
+		servers := []string{}
 		for _, a := range combined {
 			for i := 0; i < a.W; i++ {
 				servers = append(servers, a.S)
@@ -76,15 +89,30 @@ func (wrr *WeightedRoundRobin) SelectBackend(servers []string, weights []int) (s
 	return wrr.q.Get(), nil
 }
 
-type Random struct{}
+type Random struct {
+	servers []string
+}
 
-func (r *Random) SelectBackend(servers []string) (string, error) {
-	if len(servers) == 0 {
+func (r *Random) Init(servers []string) {
+	r.servers = servers
+}
+
+func (r *Random) SelectBackend() (string, error) {
+	if len(r.servers) == 0 {
 		return "", fmt.Errorf("no backend servers available")
 	}
 
 	// Randomly select a server
-	selected := servers[rand.Intn(len(servers))]
+	selected := r.servers[rand.Intn(len(r.servers))]
 
 	return selected, nil
+}
+
+// TODO
+type LeastConnections struct {
+	servers []string
+}
+
+func (lc *LeastConnections) SelectBackend() (string, error) {
+	return "", nil
 }

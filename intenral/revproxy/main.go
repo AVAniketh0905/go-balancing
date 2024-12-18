@@ -20,7 +20,7 @@ type ReverseProxy struct {
 }
 
 func (rp ReverseProxy) HandlerFunc(ctx context.Context, src net.Conn) {
-	server, err := rp.lb.SelectBackend(rp.servers)
+	server, err := rp.lb.SelectBackend()
 	if err != nil {
 		log.Printf("Error selecting backend server: %v", err)
 		src.Close()

@@ -13,12 +13,13 @@ func TestWeightedRoundRobin(t *testing.T) {
 	// Test data: Servers and weights
 	servers := []string{"A", "B", "C"}
 	weights := []int{3, 1, 2} // A: 3, B: 1, C: 2
+	wrr.Init(servers, weights)
 
 	expectedOrder := []string{"A", "A", "A", "C", "C", "B"} // Expected cyclic order
 
 	// Initialize the backend selection
 	for i := 0; i < len(expectedOrder); i++ {
-		backend, err := wrr.SelectBackend(servers, weights)
+		backend, err := wrr.SelectBackend()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -30,7 +31,7 @@ func TestWeightedRoundRobin(t *testing.T) {
 
 	// Test cyclic behavior
 	for i := 0; i < len(expectedOrder); i++ {
-		backend, err := wrr.SelectBackend(servers, weights)
+		backend, err := wrr.SelectBackend()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -42,7 +43,8 @@ func TestWeightedRoundRobin(t *testing.T) {
 	}
 
 	// Test empty servers
-	_, err := wrr.SelectBackend([]string{}, []int{})
+	wrr.Init([]string{}, []int{})
+	_, err := wrr.SelectBackend()
 	if err == nil {
 		t.Errorf("expected error when no servers are provided, but got nil")
 	}
