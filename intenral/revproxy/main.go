@@ -57,10 +57,7 @@ func proxy(once *sync.Once, dst io.WriteCloser, src io.ReadCloser) {
 			if err != io.EOF {
 				log.Fatalf("Proxy read error: %v", err)
 			}
-			// log.Println("Proxy: connection closed by peer")
 		}
-
-		// log.Printf("Proxy forwarding: %s", msg)
 
 		if _, err := dst.Write([]byte(msg)); err != nil {
 			log.Fatal(err)
