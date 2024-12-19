@@ -1,22 +1,18 @@
-package main
+package tests
 
 import (
 	"context"
-	"log"
-	"math/rand"
 	"net"
+	"testing"
 	"time"
 
 	"github.com/AVAniketh0905/go-balancing/intenral/instance"
 	"github.com/AVAniketh0905/go-balancing/intenral/server"
 	"github.com/AVAniketh0905/go-balancing/intenral/service"
+	"golang.org/x/sync/errgroup"
 )
 
-func init() {
-	rand.NewSource(time.Now().UnixNano())
-}
-
-func main() {
+func TestIntegration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -53,23 +49,32 @@ func main() {
 		}(inst)
 	}
 
+	g, _ := errgroup.WithContext(ctx)
 	for _, inst := range insts {
-		go func(i *instance.Instance) {
-			if err := i.Start(); err != nil {
-				log.Fatal(err)
-			}
-		}(inst)
+		g.Go(func() error {
+			return inst.Start()
+		})
 	}
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(10 * time.Second)
 
+	if err := g.Wait(); err != nil && err != context.DeadlineExceeded {
+		t.Fatal(err)
+	}
+
+	g = &errgroup.Group{}
+	// shuld fail as insts are already stopped
 	for _, inst := range insts {
-		go func(i *instance.Instance) {
-			if err := i.Stop(); err != nil {
-				log.Fatal(err)
-			}
-		}(inst)
+		g.Go(func() error {
+			return inst.Stop()
+		})
 	}
 
 	time.Sleep(5 * time.Second)
+
+	if err := g.Wait(); err != nil && err.Error() != "already stopped" {
+		t.Fatal(err)
+	}
+
+	t.Log("success")
 }

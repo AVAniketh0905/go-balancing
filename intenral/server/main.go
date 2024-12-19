@@ -72,8 +72,8 @@ func (s *TCPServer) Run() error {
 	for {
 		select {
 		case <-s.Ctx.Done():
-			log.Println("shutting down TCP server...")
-			return nil
+			log.Println("shutting down TCP server, timeout...")
+			return context.DeadlineExceeded
 		default:
 			l.(*net.TCPListener).SetDeadline(time.Now().Add(10 * time.Second)) // waits for 10 sec
 			conn, err := l.Accept()

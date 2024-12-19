@@ -1,6 +1,7 @@
 package instance
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -53,15 +54,15 @@ func (i *Instance) Info() string {
 func (i *Instance) Start() error {
 	i.updateState(Starting)
 
-	go func() {
+	return func() error {
 		err := i.Run()
 		if err != nil {
-			fmt.Printf("Instance %d encountered an error: %v\n", i.id, err)
+			// fmt.Printf("Instance %d encountered an error: %v\n", i.id, err)
 			i.updateState(Stopped)
 		}
-	}()
 
-	return nil
+		return err
+	}()
 }
 
 func (i *Instance) Run() error {
@@ -70,6 +71,9 @@ func (i *Instance) Run() error {
 }
 
 func (i *Instance) Stop() error {
+	if i.State() == Stopped {
+		return errors.New("already stopped")
+	}
 	i.updateState(Stopped)
 	return nil
 }
