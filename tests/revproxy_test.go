@@ -13,6 +13,7 @@ import (
 	"github.com/AVAniketh0905/go-balancing/intenral/revproxy"
 	"github.com/AVAniketh0905/go-balancing/intenral/server"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sync/errgroup"
 )
 
 func TestRevProxy(t *testing.T) {
@@ -306,8 +307,9 @@ func TestLoadBalancing_LeastConnections(t *testing.T) {
 	numClients := 50
 	wg.Add(numClients)
 
+	g := &errgroup.Group{}
 	for i := 0; i < numClients; i++ {
-		go func(i int) {
+		g.Go(func() error {
 			defer wg.Done()
 
 			client, err := net.Dial("tcp", rpConfig.Addr())
@@ -317,23 +319,30 @@ func TestLoadBalancing_LeastConnections(t *testing.T) {
 			// Send a message to the proxy
 			message := fmt.Sprintf("client %d!\n", i)
 			_, err = client.Write([]byte(message))
-			assert.NoError(t, err)
+			if err != nil {
+				return err
+			}
 
 			buf := make([]byte, 1024)
 			_, err = client.Read(buf)
 			if err != nil && err != io.EOF {
-				t.Error(err)
+				return err
 			}
 
 			// t.Logf("client %d - %v rcvd msg, %v", i, client.LocalAddr(), string(buf[:n]))
 
 			time.Sleep(100 * time.Millisecond)
-		}(i)
+			return nil
+		})
 	}
 
 	time.Sleep(200 * time.Millisecond)
 
 	wg.Wait()
+
+	if err := g.Wait(); err != nil {
+		t.Fatal(err)
+	}
 
 	cancel()
 }
