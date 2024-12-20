@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AVAniketh0905/go-balancing/intenral/connection"
 	"github.com/AVAniketh0905/go-balancing/intenral/server"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,8 +32,8 @@ func TestMultipleServers(t *testing.T) {
 
 	srv1 := &server.TCPServer{}
 	srv2 := &server.TCPServer{}
-	srv1.Init(3000, ctx, func(ctx context.Context, conn net.Conn) { defer conn.Close() })
-	srv2.Init(3001, ctx, func(ctx context.Context, conn net.Conn) { defer conn.Close() })
+	srv1.Init(3000, ctx, func(ctx context.Context, conn connection.Conn) { defer conn.Close() })
+	srv2.Init(3001, ctx, func(ctx context.Context, conn connection.Conn) { defer conn.Close() })
 
 	servers := []server.Server{srv1, srv2}
 
@@ -72,7 +73,7 @@ func TestNumConns(t *testing.T) {
 	defer cancel()
 
 	srv := &server.TCPServer{}
-	srv.Init(8080, ctx, func(ctx context.Context, conn net.Conn) {
+	srv.Init(8080, ctx, func(ctx context.Context, conn connection.Conn) {
 		time.Sleep(100 * time.Millisecond)
 	})
 
@@ -123,7 +124,7 @@ func TestTCPServerWithMaxConns(t *testing.T) {
 	defer cancel()
 
 	srv := &server.TCPServer{}
-	srv.Init(8080, ctx, func(ctx context.Context, conn net.Conn) {
+	srv.Init(8080, ctx, func(ctx context.Context, conn connection.Conn) {
 		defer conn.Close()
 
 		time.Sleep(500 * time.Millisecond)

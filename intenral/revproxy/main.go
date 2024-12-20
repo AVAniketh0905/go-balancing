@@ -9,6 +9,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/AVAniketh0905/go-balancing/intenral/connection"
 	"github.com/AVAniketh0905/go-balancing/intenral/loadbalance"
 )
 
@@ -19,7 +20,7 @@ type ReverseProxy struct {
 	servers []string
 }
 
-func (rp *ReverseProxy) HandlerFunc(ctx context.Context, src net.Conn) {
+func (rp *ReverseProxy) Handler(ctx context.Context, src connection.Conn) {
 	server, err := rp.lb.SelectBackend()
 	if err != nil {
 		log.Printf("Error selecting backend server: %v", err)

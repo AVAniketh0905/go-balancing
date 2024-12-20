@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AVAniketh0905/go-balancing/intenral/connection"
 	"github.com/AVAniketh0905/go-balancing/intenral/loadbalance"
 	"github.com/AVAniketh0905/go-balancing/intenral/revproxy"
 	"github.com/AVAniketh0905/go-balancing/intenral/server"
@@ -24,7 +25,7 @@ func TestRevProxy(t *testing.T) {
 	tcpServer := server.TCPServer{
 		Config: config,
 		Ctx:    ctx,
-		HandlerFunc: func(ctx context.Context, conn net.Conn) {
+		Handler: func(ctx context.Context, conn connection.Conn) {
 			buf := make([]byte, 1024)
 			n, err := conn.Read(buf)
 			if err != nil {
@@ -56,9 +57,9 @@ func TestRevProxy(t *testing.T) {
 
 	rpConfig := server.NewConfig(3470)
 	rpServer := server.TCPServer{
-		Config:      rpConfig,
-		Ctx:         ctx,
-		HandlerFunc: rp.HandlerFunc,
+		Config:  rpConfig,
+		Ctx:     ctx,
+		Handler: rp.Handler,
 	}
 
 	go func() {
@@ -99,7 +100,7 @@ func TestLoadBalancing_RoundRobin(t *testing.T) {
 	tcpServer1 := server.TCPServer{
 		Config: config1,
 		Ctx:    ctx,
-		HandlerFunc: func(ctx context.Context, conn net.Conn) {
+		Handler: func(ctx context.Context, conn connection.Conn) {
 			buf := make([]byte, 1024)
 			n, err := conn.Read(buf)
 			if err != nil && err != io.EOF {
@@ -115,7 +116,7 @@ func TestLoadBalancing_RoundRobin(t *testing.T) {
 	tcpServer2 := server.TCPServer{
 		Config: config2,
 		Ctx:    ctx,
-		HandlerFunc: func(ctx context.Context, conn net.Conn) {
+		Handler: func(ctx context.Context, conn connection.Conn) {
 			buf := make([]byte, 1024)
 			n, err := conn.Read(buf)
 			if err != nil && err != io.EOF {
@@ -131,7 +132,7 @@ func TestLoadBalancing_RoundRobin(t *testing.T) {
 	tcpServer3 := server.TCPServer{
 		Config: config3,
 		Ctx:    ctx,
-		HandlerFunc: func(ctx context.Context, conn net.Conn) {
+		Handler: func(ctx context.Context, conn connection.Conn) {
 			buf := make([]byte, 1024)
 			n, err := conn.Read(buf)
 			if err != nil && err != io.EOF {
@@ -170,9 +171,9 @@ func TestLoadBalancing_RoundRobin(t *testing.T) {
 
 	rpConfig := server.NewConfig(9000)
 	rpServer := server.TCPServer{
-		Config:      rpConfig,
-		Ctx:         ctx,
-		HandlerFunc: rp.HandlerFunc,
+		Config:  rpConfig,
+		Ctx:     ctx,
+		Handler: rp.Handler,
 	}
 
 	go func() {
@@ -214,7 +215,7 @@ func TestLoadBalancing_LeastConnections(t *testing.T) {
 	tcpServer1 := server.TCPServer{
 		Config: config1,
 		Ctx:    ctx,
-		HandlerFunc: func(ctx context.Context, conn net.Conn) {
+		Handler: func(ctx context.Context, conn connection.Conn) {
 			buf := make([]byte, 1024)
 			n, err := conn.Read(buf)
 			if err != nil && err != io.EOF {
@@ -230,7 +231,7 @@ func TestLoadBalancing_LeastConnections(t *testing.T) {
 	tcpServer2 := server.TCPServer{
 		Config: config2,
 		Ctx:    ctx,
-		HandlerFunc: func(ctx context.Context, conn net.Conn) {
+		Handler: func(ctx context.Context, conn connection.Conn) {
 			buf := make([]byte, 1024)
 			n, err := conn.Read(buf)
 			if err != nil && err != io.EOF {
@@ -246,7 +247,7 @@ func TestLoadBalancing_LeastConnections(t *testing.T) {
 	tcpServer3 := server.TCPServer{
 		Config: config3,
 		Ctx:    ctx,
-		HandlerFunc: func(ctx context.Context, conn net.Conn) {
+		Handler: func(ctx context.Context, conn connection.Conn) {
 			buf := make([]byte, 1024)
 			n, err := conn.Read(buf)
 			if err != nil && err != io.EOF {
@@ -291,9 +292,9 @@ func TestLoadBalancing_LeastConnections(t *testing.T) {
 
 	rpConfig := server.NewConfig(9000)
 	rpServer := server.TCPServer{
-		Config:      rpConfig,
-		Ctx:         ctx,
-		HandlerFunc: rp.HandlerFunc,
+		Config:  rpConfig,
+		Ctx:     ctx,
+		Handler: rp.Handler,
 	}
 
 	go func() {

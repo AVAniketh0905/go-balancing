@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AVAniketh0905/go-balancing/intenral/connection"
 	"github.com/AVAniketh0905/go-balancing/intenral/instance"
 	"github.com/AVAniketh0905/go-balancing/intenral/loadbalance"
 	"github.com/AVAniketh0905/go-balancing/intenral/revproxy"
@@ -26,27 +27,18 @@ func TestIntegration(t *testing.T) {
 	tcp1 := &server.TCPServer{}
 	tcp2 := &server.TCPServer{}
 
-	tcp1.Init(8000, ctx, func(ctx context.Context, conn net.Conn) {
+	tcp1.Init(8000, ctx, func(ctx context.Context, conn connection.Conn) {
 		time.Sleep(100 * time.Millisecond)
 	})
-	tcp2.Init(8001, ctx, func(ctx context.Context, conn net.Conn) {
+	tcp2.Init(8001, ctx, func(ctx context.Context, conn connection.Conn) {
 		time.Sleep(200 * time.Millisecond)
 	})
 
-	servers := []server.Server{tcp1, tcp2}
-
-	var services []service.Service
-	for _, s := range servers {
-		srvc := service.Service{
-			Type:   service.DataCollection,
-			Server: s,
-		}
-		services = append(services, srvc)
-	}
+	servers := []*server.TCPServer{tcp1, tcp2}
 
 	var insts []*instance.Instance
-	for _, srvc := range services {
-		inst := instance.New(srvc)
+	for _, srv := range servers {
+		inst := instance.NewTCP(srv.Config.Port(), ctx, service.DataCollection{})
 		insts = append(insts, inst)
 	}
 
@@ -88,6 +80,7 @@ func TestIntegration(t *testing.T) {
 
 func TestIntegration_LoadBalancing(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	configs := []int{10000, 10001, 10002}
 
@@ -96,7 +89,7 @@ func TestIntegration_LoadBalancing(t *testing.T) {
 		tcpServer := &server.TCPServer{
 			Config: server.NewConfig(port),
 			Ctx:    ctx,
-			HandlerFunc: func(ctx context.Context, conn net.Conn) {
+			Handler: func(ctx context.Context, conn connection.Conn) {
 				time.Sleep(50 * time.Millisecond)
 			},
 		}
@@ -118,19 +111,16 @@ func TestIntegration_LoadBalancing(t *testing.T) {
 
 	rpConfig := server.NewConfig(9000)
 	rpServer := &server.TCPServer{
-		Config:      rpConfig,
-		Ctx:         ctx,
-		HandlerFunc: rp.HandlerFunc,
+		Config:  rpConfig,
+		Ctx:     ctx,
+		Handler: rp.Handler,
 	}
 
 	servers = append(servers, rpServer)
 
 	var insts []*instance.Instance
 	for _, srv := range servers {
-		inst := instance.New(service.Service{
-			Type:   service.DataCollection,
-			Server: srv,
-		})
+		inst := instance.NewTCP(srv.Config.Port(), ctx, service.DataCollection{})
 		insts = append(insts, inst)
 	}
 
@@ -161,7 +151,7 @@ func TestIntegration_LoadBalancing(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	var wg sync.WaitGroup
-	numClients := 50 // reduce time in servers' handler func to accomodate more conns per socket
+	numClients := 200 // reduce time in servers' handler func to accomodate more conns per socket
 
 	g := &errgroup.Group{}
 	counter := int32(0)
@@ -194,7 +184,22 @@ func TestIntegration_LoadBalancing(t *testing.T) {
 	wg.Wait()
 	t.Log("total clients served, ", atomic.LoadInt32(&counter))
 
-	cancel()
+	// cancel()
+	wg.Add(len(insts))
+
+	g_ := &errgroup.Group{}
+	for _, inst := range insts {
+		g_.Go(func() error {
+			defer wg.Done()
+			return inst.Stop()
+		})
+	}
+
+	wg.Wait()
+
+	if err := g_.Wait(); err != nil {
+		t.Fatal(err)
+	}
 
 	mainWG.Wait()
 

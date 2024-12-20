@@ -2,12 +2,15 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/AVAniketh0905/go-balancing/intenral/connection"
 )
 
 type MaxConnsMap struct {
@@ -32,20 +35,24 @@ type Server interface {
 	NumConns() int32
 	Info() string
 	Run() error
+	Close()
 }
 
 type TCPServer struct {
-	numConns int32
+	numConns  int32
+	closeChan chan struct{}
 
-	Config      Config
-	Ctx         context.Context
-	HandlerFunc func(ctx context.Context, conn net.Conn)
+	Config  Config
+	Ctx     context.Context
+	Handler func(ctx context.Context, conn connection.Conn)
 }
 
-func (s *TCPServer) Init(port int, ctx context.Context, handler func(ctx context.Context, conn net.Conn)) {
+func (s *TCPServer) Init(port int, ctx context.Context, handler func(ctx context.Context, conn connection.Conn)) {
 	s.Config = Config{port: port}
 	s.Ctx = ctx
-	s.HandlerFunc = handler
+	s.Handler = handler
+
+	s.closeChan = make(chan struct{})
 }
 
 func (s *TCPServer) NumConns() int32 {
@@ -71,6 +78,8 @@ func (s *TCPServer) Run() error {
 
 	for {
 		select {
+		case <-s.closeChan:
+			return nil
 		case <-s.Ctx.Done():
 			log.Println("shutting down TCP server...")
 			return nil
@@ -85,32 +94,41 @@ func (s *TCPServer) Run() error {
 				log.Printf("error accepting connection: %v", err)
 				return err
 			}
+			tcpConn := &connection.TCPConnection{Conn: conn}
 
 			currentConns := atomic.AddInt32(&s.numConns, 1)
 			// log.Println("server: conn started at, ", conn.LocalAddr(), "numConns: ", currentConns)
 			MaxConnsDB.StoreMax(s.Config.Addr(), currentConns)
 
-			go func(conn net.Conn, s *TCPServer) {
+			go func(conn connection.Conn, s *TCPServer) {
 				defer func() {
 					conn.Close()
 					atomic.AddInt32(&s.numConns, -1)
 				}()
-				s.HandlerFunc(s.Ctx, conn)
-			}(conn, s)
+				s.Handler(s.Ctx, conn)
+			}(tcpConn, s)
 		}
 	}
 }
 
-type UDPServer struct {
-	Config      Config
-	Ctx         context.Context
-	HandlerFunc func(ctx context.Context, conn net.PacketConn)
+func (s *TCPServer) Close() {
+	close(s.closeChan)
 }
 
-func (s *UDPServer) Init(port int, ctx context.Context, handler func(ctx context.Context, conn net.PacketConn)) {
+type UDPServer struct {
+	closeChan chan struct{}
+
+	Config  Config
+	Ctx     context.Context
+	Handler func(ctx context.Context, conn connection.Conn)
+}
+
+func (s *UDPServer) Init(port int, ctx context.Context, handler func(ctx context.Context, conn connection.Conn)) {
 	s.Config = Config{port: port}
 	s.Ctx = ctx
-	s.HandlerFunc = handler
+	s.Handler = handler
+
+	s.closeChan = make(chan struct{})
 }
 
 func (s *UDPServer) NumConns() int32 {
@@ -126,6 +144,9 @@ func (s *UDPServer) Run() error {
 	addr := s.Config.Addr()
 
 	select {
+	case <-s.closeChan:
+		log.Println("server closed", s.Config.Addr())
+		return nil
 	case <-s.Ctx.Done():
 		log.Println("shutting down TCP server...")
 		return nil
@@ -135,12 +156,23 @@ func (s *UDPServer) Run() error {
 			log.Fatal("conn error", err)
 			return err
 		}
+
+		conn2, ok := conn.(*net.UDPConn)
+		if !ok {
+			return fmt.Errorf("failed to cast net.PacketConn to *net.UDPConn")
+		}
+		udpConn := &connection.UDPConnection{Conn: conn2}
+
 		log.Printf("listener started at, %v\n", addr)
 		go func() {
-			defer conn.Close()
-			s.HandlerFunc(s.Ctx, conn)
+			defer udpConn.Close()
+			s.Handler(s.Ctx, udpConn)
 		}()
 	}
 
 	return nil
+}
+
+func (s *UDPServer) Close() {
+	close(s.closeChan)
 }

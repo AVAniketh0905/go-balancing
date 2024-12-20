@@ -1,26 +1,23 @@
 package service
 
 import (
-	"fmt"
+	"context"
 
-	"github.com/AVAniketh0905/go-balancing/intenral/server"
+	"github.com/AVAniketh0905/go-balancing/intenral/connection"
 )
 
-type ServiceType int
-
-const (
-	DataCollection ServiceType = iota
-)
-
-type Service struct {
-	Type   ServiceType
-	Server server.Server
+type ServiceType interface {
+	Name() string
+	Handler(ctx context.Context, conn connection.Conn)
 }
 
-func (s Service) Info() string {
-	return s.Server.Info() + fmt.Sprintf("Type: %d", s.Type)
+type DataCollection struct {
 }
 
-func (s Service) Run() error {
-	return s.Server.Run()
+func (dc DataCollection) Name() string {
+	return "data collection"
+}
+
+func (dc DataCollection) Handler(ctx context.Context, conn connection.Conn) {
+	// log.Println("data collecting!")
 }
