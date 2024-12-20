@@ -1,6 +1,6 @@
 module github.com/AVAniketh0905/go-balancing
 
-go 1.22.3
+go 1.23.4
 
 require (
 	github.com/stretchr/testify v1.10.0
