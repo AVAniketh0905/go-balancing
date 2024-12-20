@@ -4,8 +4,6 @@ import (
 	"log"
 	"math/rand"
 	"time"
-
-	_ "net/http/pprof"
 )
 
 func init() {
