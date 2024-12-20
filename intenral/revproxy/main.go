@@ -29,7 +29,7 @@ func (rp *ReverseProxy) HandlerFunc(ctx context.Context, src net.Conn) {
 
 	dst, err := net.Dial("tcp", server)
 	if err != nil {
-		log.Printf("Error connecting to backend server %s: %v", server, err)
+		log.Fatalf("Error connecting to backend server %s: %v", server, err)
 		src.Close()
 		return
 	}

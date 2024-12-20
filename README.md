@@ -36,6 +36,10 @@ MaxConnsDB(in mem sync.Map)
 - stateChan
 - mutex
 
+not nice: changes ->
+
+- id, port, ctx, state, stateChan, mutex, server, serviceType
+
 shuld be able to pass state chan to service
 
 ### Reverse Proxy
